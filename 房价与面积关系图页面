@@ -5,20 +5,8 @@
 </head>
 <body style="text-align: center; padding: 50px;">
     <h1>房价与面积关系图</h1>
-    <img src="./images/housing-price-chart.jpg" 
-         alt="房价与面积关系图"
-         style="max-width: 90%; margin: 30px 0;">
-    <br>
-    <a href="index.html" style="font-size: 18px;">← 返回主页</a>
-</body>
-</html><!DOCTYPE html>
-<html>
-<head>
-    <title>房价与面积关系图</title>
-</head>
-<body style="text-align: center; padding: 50px;">
-    <h1>房价与面积关系图</h1>
-    <img src="./images/housing-price-chart.jpg" 
+    <!-- 这里修改图片路径 -->
+    <img src="房价图.jpg" 
          alt="房价与面积关系图"
          style="max-width: 90%; margin: 30px 0;">
     <br>
