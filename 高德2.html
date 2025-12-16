@@ -1,14 +1,114 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高德地图可视化项目 - MVT数据筛选</title>
+    <title>武汉二手房数据可视化+分析建议（极速加载版）</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; }
         #mapContainer { width: 100%; height: 100%; }
         
-        /* 图例样式 */
+        /* 功能选项面板 */
+        #functionPanel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 200px;
+        }
+        .function-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .function-item {
+            padding: 8px 0;
+            color: #1e5799;
+            cursor: pointer;
+            border-bottom: 1px dashed #f0f0f0;
+            transition: color 0.2s;
+        }
+        .function-item:hover {
+            color: #16457a;
+        }
+        
+        /* 筛选查询面板 */
+        #filterSearchPanel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 320px;
+        }
+        .panel-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 16px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .control-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .range-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .range-controls input {
+            flex: 1;
+        }
+        .action-button {
+            width: 100%;
+            padding: 10px;
+            background: #1e5799;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .action-button:hover {
+            background: #16457a;
+        }
+        .action-button.reset {
+            background: #666;
+        }
+        .result-count {
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+            margin-top: 5px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+
+        /* 图例 */
         #legend {
             position: absolute;
             bottom: 20px;
@@ -20,7 +120,6 @@
             z-index: 1000;
             min-width: 200px;
         }
-        
         .legend-title {
             font-weight: bold;
             margin-bottom: 10px;
@@ -28,123 +127,109 @@
             border-bottom: 1px solid #eee;
             padding-bottom: 5px;
         }
-        
         .legend-item {
             display: flex;
             align-items: center;
             margin-bottom: 8px;
         }
-        
         .legend-color {
-            width: 20px;
-            height: 20px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             margin-right: 10px;
-            border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            border: 1px solid #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
-        
         .legend-label {
             font-size: 14px;
             color: #666;
         }
-        
-        /* 筛选控件样式 */
-        #filterPanel {
+
+        /* 弹窗面板（优化加载） */
+        .popup-panel {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-            width: 300px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 1002;
+            width: 80%;
+            max-width: 900px;
             max-height: 80vh;
             overflow-y: auto;
+            display: none;
         }
-        
-        .filter-section {
-            margin-bottom: 20px;
-        }
-        
-        .filter-title {
+        .popup-title {
+            font-size: 18px;
             font-weight: bold;
-            margin-bottom: 10px;
             color: #333;
-            font-size: 16px;
-        }
-        
-        .filter-group {
             margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
         }
-        
-        .filter-label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
+        .popup-content img {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            /* 图片加载失败兜底 */
+            background: #f5f5f5;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+        }
+        .popup-content p {
+            line-height: 1.6;
             color: #666;
+            margin: 8px 0;
         }
-        
-        .filter-input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
+        .popup-content .section-title {
+            font-weight: bold;
+            color: #1e5799;
+            margin-top: 15px;
+            margin-bottom: 8px;
         }
-        
-        .filter-select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            background: white;
-            height: 120px;
+        .popup-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
         }
-        
-        .filter-button {
-            width: 100%;
+        .popup-buttons button {
+            flex: 1;
             padding: 10px;
-            background: #1e5799;
-            color: white;
             border: none;
             border-radius: 4px;
             font-size: 14px;
             cursor: pointer;
-            margin-bottom: 10px;
         }
-        
-        .filter-button:hover {
-            background: #16457a;
+        .popup-btn-suggest {
+            background: #1e5799;
+            color: white;
         }
-        
-        .filter-button.reset {
+        .popup-btn-close {
             background: #666;
+            color: white;
         }
-        
-        .filter-button.reset:hover {
-            background: #555;
+        /* 图片加载提示 */
+        .img-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 14px;
         }
-        
-        .range-inputs {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .range-inputs input {
-            flex: 1;
-        }
-        
-        .info-text {
-            font-size: 12px;
-            color: #999;
-            margin-top: 5px;
+        .img-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 15px;
         }
 
-        /* 属性信息面板 */
+        /* 属性面板 */
         #propertyPanel {
             position: absolute;
             top: 50%;
@@ -158,22 +243,42 @@
             width: 300px;
             display: none;
         }
-        
         .property-item {
             margin: 10px 0;
             padding: 5px 0;
             border-bottom: 1px solid #f0f0f0;
         }
-        
         .property-key {
             font-weight: bold;
             color: #1e5799;
+        }
+
+        /* 加载提示 */
+        #loadingTip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            z-index: 2000;
         }
     </style>
 </head>
 <body>
     <div id="mapContainer"></div>
+    <div id="loadingTip">正在加载数据...</div>
     
+    <!-- 功能选项面板 -->
+    <div id="functionPanel">
+        <div class="function-title">分析功能</div>
+        <div class="function-item" onclick="openPopup('heatmap')">1. 房价热力图</div>
+        <div class="function-item" onclick="openPopup('areaPrice')">2. 单价面积关系图</div>
+        <div class="function-item" onclick="openPopup('suggest')">3. 购买建议</div>
+    </div>
+
     <!-- 图例 -->
     <div id="legend">
         <div class="legend-title">单价图例</div>
@@ -187,59 +292,133 @@
         </div>
     </div>
     
-    <!-- 筛选控件 -->
-    <div id="filterPanel">
-        <div class="filter-section">
-            <div class="filter-title">数据筛选</div>
-            
-            <!-- 区域筛选 -->
-            <div class="filter-group">
-                <label class="filter-label">选择区域:</label>
-                <select multiple class="filter-select" id="regionSelect">
-                    <!-- 区域选项将通过JavaScript动态填充 -->
-                </select>
-                <div class="info-text">按住Ctrl可多选，不选则显示所有区域</div>
+    <!-- 筛选查询面板 -->
+    <div id="filterSearchPanel">
+        <div class="panel-title">数据查询与筛选</div>
+        <div class="control-group">
+            <label class="control-label">关键词查询（小区/区域）</label>
+            <input type="text" id="keywordSearch" class="control-input" placeholder="例如：武昌区、东湖小区">
+        </div>
+        <div class="control-group">
+            <label class="control-label">单价区间（元/㎡）</label>
+            <div class="range-controls">
+                <input type="number" id="minPrice" class="control-input" placeholder="最低" min="0">
+                <input type="number" id="maxPrice" class="control-input" placeholder="最高">
             </div>
-            
-            <!-- 单价区间筛选 -->
-            <div class="filter-group">
-                <label class="filter-label">单价区间（元/㎡）:</label>
-                <div class="range-inputs">
-                    <input type="number" id="minPrice" class="filter-input" placeholder="最低单价">
-                    <input type="number" id="maxPrice" class="filter-input" placeholder="最高单价">
-                </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label">总价区间（万元）</label>
+            <div class="range-controls">
+                <input type="number" id="minTotalPrice" class="control-input" placeholder="最低" min="0">
+                <input type="number" id="maxTotalPrice" class="control-input" placeholder="最高">
             </div>
-            
-            <!-- 总价区间筛选 -->
-            <div class="filter-group">
-                <label class="filter-label">总价区间（万元）:</label>
-                <div class="range-inputs">
-                    <input type="number" id="minTotalPrice" class="filter-input" placeholder="最低总价">
-                    <input type="number" id="maxTotalPrice" class="filter-input" placeholder="最高总价">
-                </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label">面积区间（㎡）</label>
+            <div class="range-controls">
+                <input type="number" id="minArea" class="control-input" placeholder="最小" min="0">
+                <input type="number" id="maxArea" class="control-input" placeholder="最大">
             </div>
-            
-            <!-- 面积筛选 -->
-            <div class="filter-group">
-                <label class="filter-label">面积区间（㎡）:</label>
-                <div class="range-inputs">
-                    <input type="number" id="minArea" class="filter-input" placeholder="最小面积">
-                    <input type="number" id="maxArea" class="filter-input" placeholder="最大面积">
-                </div>
+        </div>
+        <button class="action-button" id="doSearchFilter">查询并筛选</button>
+        <button class="action-button reset" id="resetAll">重置所有条件</button>
+        <div class="result-count" id="resultCount">加载中...</div>
+    </div>
+
+    <!-- 房价热力图弹窗（优化图片加载） -->
+    <div id="heatmapPopup" class="popup-panel">
+        <div class="popup-title">武汉市二手房房价热力图</div>
+        <div class="popup-content">
+            <div class="img-container">
+                <div class="img-loading" id="heatmapLoading">图片加载中...</div>
+                <!-- 方式1：使用你的原图链接（优先） -->
+                <img 
+                    src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/ff67be6eca864b2ca2d6ffb28ac6d54d.png~tplv-a9rns2rl98-image.png?rcl=202512161102294A53C7FE90AFCADC1108&rk3s=8e244e95&rrcfp=dafada99&x-expires=2082078150&x-signature=188tzcrtTDaIkY1ME2hI4dqYk8U%3D" 
+                    alt="武汉市二手房房价热力图"
+                    onload="hideLoading('heatmapLoading')"
+                    onerror="this.src='https://via.placeholder.com/800x600?text=图片加载失败，请刷新重试'">
             </div>
-            
-            <!-- 操作按钮 -->
-            <button class="filter-button" id="applyFilter">应用筛选</button>
-            <button class="filter-button reset" id="resetFilter">重置筛选</button>
-            
-            <!-- 统计信息 -->
-            <div class="filter-group">
-                <div class="info-text" id="resultCount">共 159 个数据点</div>
+            <div id="heatmapSuggest" style="display: none;">
+                <div class="section-title">1. 热力核心区（红色高单价）</div>
+                <p>第一梯队（15000-20000 元/㎡）：武昌滨江（积玉桥）、江岸二七滨江、江汉武广商圈，核心驱动：江景资源 + 顶级学区 + 地铁1/2/7号线；</p>
+                <p>第二梯队（10000-15000 元/㎡）：洪山光谷、汉阳钟家村、硚口宗关，核心驱动：产业集聚（光谷科创）+ 地铁环线 + 成熟商圈。</p>
+                
+                <div class="section-title">2. 冷区（蓝色低单价）</div>
+                <p>核心远郊（7000-10000 元/㎡）：江夏藏龙岛、黄陂盘龙城、东西湖吴家山，核心制约：通勤距离（距光谷/汉口核心＞30分钟）+ 配套滞后；</p>
+                <p>远郊边缘（5000-7000 元/㎡）：新洲阳逻、蔡甸中法生态城，核心制约：无地铁覆盖 + 产业支撑弱。</p>
+                
+                <div class="section-title">3. 热力分布规律</div>
+                <p>单价与“核心城区距离”呈强负相关：距汉口/武昌核心每增加5公里，单价下降约15%；</p>
+                <p>地铁沿线溢价显著：已通车地铁站点500米内房源，单价比非沿线高10%-20%；</p>
+                <p>学区溢价分化：重点小学（如武昌水果湖一小）学区房单价溢价超40%，普通学区溢价仅5%-10%。</p>
             </div>
+        </div>
+        <div class="popup-buttons">
+            <button class="popup-btn-suggest" onclick="toggleSuggest('heatmap')">查看分析</button>
+            <button class="popup-btn-close" onclick="closePopup('heatmap')">关闭</button>
         </div>
     </div>
 
-    <!-- 属性信息面板 -->
+    <!-- 单价面积关系图弹窗（优化图片加载） -->
+    <div id="areaPricePopup" class="popup-panel">
+        <div class="popup-title">单价和面积之间的关系</div>
+        <div class="popup-content">
+            <div class="img-container">
+                <div class="img-loading" id="areaPriceLoading">图片加载中...</div>
+                <!-- 方式1：使用你的原图链接（优先） -->
+                <img 
+                    src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/40c76c2121c64120958d20d9c11059eb.png~tplv-a9rns2rl98-image.png?rcl=202512161102294A53C7FE90AFCADC1108&rk3s=8e244e95&rrcfp=dafada99&x-expires=2082078150&x-signature=LV0T3azWCNOUtVYOJv8EzWtQvmo%3D" 
+                    alt="单价和面积之间的关系"
+                    onload="hideLoading('areaPriceLoading')"
+                    onerror="this.src='https://via.placeholder.com/800x500?text=图片加载失败，请刷新重试'">
+            </div>
+            <div id="areaPriceSuggest" style="display: none;">
+                <p>小户型单价溢价显著：50-80㎡房源集中在武昌、江岸等核心城区，配套成熟（地铁/学区），单价比同区域中户型高20%-30%，核心逻辑是“低总价 + 高流通性”；</p>
+                <p>中户型性价比最优：80-120㎡是供需平衡点，单价适中且总价可控，武昌洪山、汉阳四新等板块的次新房占比超70%，增值稳定性最强；</p>
+                <p>大户型单价折价明显：120㎡以上房源多分布在远城区，单价随面积增大逐步降低，核心制约因素是“置换难度大 + 持有成本高”。</p>
+            </div>
+        </div>
+        <div class="popup-buttons">
+            <button class="popup-btn-suggest" onclick="toggleSuggest('areaPrice')">查看分析</button>
+            <button class="popup-btn-close" onclick="closePopup('areaPrice')">关闭</button>
+        </div>
+    </div>
+
+    <!-- 购买建议弹窗 -->
+    <div id="suggestPopup" class="popup-panel">
+        <div class="popup-title">武汉市二手房购买建议</div>
+        <div class="popup-content">
+            <div class="section-title">1. 刚需购房（预算有限，50-80㎡）</div>
+            <p>优先板块：武昌徐东、江岸后湖、汉阳四新（单价10000-14000 元/㎡，地铁3/6/8号线覆盖，小户型占比超60%）；</p>
+            <p>避坑点：远离核心城区老破小（房龄＞20年，无电梯/物业差），优先次新小户型（房龄5-10年）；</p>
+            <p>核心逻辑：牺牲部分面积，优先保障“地铁 + 学区”，流通性＞居住舒适度。</p>
+            
+            <div class="section-title">2. 改善购房（80-120㎡，兼顾性价比与居住品质）</div>
+            <p>优先板块：洪山光谷东、汉阳钟家村、硚口汉西（单价9000-12000 元/㎡，中户型占比70%，次新房为主）；</p>
+            <p>优选户型：3室2厅（功能性＞面积），优先南北通透、梯户比1:2的房源；</p>
+            <p>核心逻辑：中户型是供需平衡点，增值稳定性最强，优先选择“地铁 + 商业 + 公园”三重配套板块。</p>
+            
+            <div class="section-title">3. 高端改善/投资（120-200㎡）</div>
+            <p>优先板块：武昌滨江、江岸二七滨江（大户型单价12000-15000 元/㎡，稀缺江景资源），远城区仅推荐江夏光谷南（产业外溢）；</p>
+            <p>避坑点：远离新洲/蔡甸超大户型（换手率＜5%/年），投资属性弱；</p>
+            <p>核心逻辑：只选核心板块稀缺资源（江景/学区），长期持有（＞5年）才能兑现增值。</p>
+            
+            <div class="section-title">4. 纯投资购房</div>
+            <p>优先标的：光谷东80-100㎡次新房（单价11000-13000 元/㎡，产业人口导入快，租金回报率2.5%-3%）；</p>
+            <p>避坑标的：远城区低单价大户型（租金回报率＜1.5%，换手率低）；</p>
+            <p>核心逻辑：投资回报率=租金收益 + 增值收益，优先选择“产业人口导入快 + 地铁规划落地”板块。</p>
+            
+            <div class="section-title">5. 远城区购房（单价≤10000 元/㎡）</div>
+            <p>优先板块：江夏藏龙岛（近光谷，单价8000-10000 元/㎡）、黄陂盘龙城（近汉口，单价7000-9000 元/㎡）；</p>
+            <p>核心配套：优先选择地铁7/8/21号线沿线（已通车），避开无地铁规划板块；</p>
+            <p>核心逻辑：远城区购房“地铁＞价格＞面积”，通勤便利性是保值核心。</p>
+        </div>
+        <div class="popup-buttons">
+            <button class="popup-btn-close" onclick="closePopup('suggest')">关闭</button>
+        </div>
+    </div>
+
+    <!-- 属性面板 -->
     <div id="propertyPanel">
         <div class="property-item">
             <span class="property-key">小区:</span> <span id="propCommunity"></span>
@@ -259,10 +438,10 @@
         <div class="property-item">
             <span class="property-key">总价:</span> <span id="propTotalPrice"></span> 万元
         </div>
-        <button class="filter-button" onclick="document.getElementById('propertyPanel').style.display='none'">关闭</button>
+        <button class="action-button" onclick="document.getElementById('propertyPanel').style.display='none'">关闭</button>
     </div>
 
-    <!-- 配置安全密钥 -->
+    <!-- 高德安全配置 -->
     <script type="text/javascript">
         window._AMapSecurityConfig = {
             securityJsCode: '7e5f2c0059d4114aa0a0141f0182b0c1'
@@ -270,104 +449,112 @@
     </script>
 
     <!-- 引入高德地图API -->
-    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=a19e8b46119d6277b2f366ab1d2f552c&plugin=AMap.Visual,AMap.DistrictSearch"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=a19e8b46119d6277b2f366ab1d2f552c&plugin=AMap.DataService,AMap.DistrictSearch"></script>
     
     <script type="text/javascript">
-        // 创建地图 - 中心点设为武汉
+        // 初始化地图
         var map = new AMap.Map('mapContainer', {
             zoom: 12,
-            center: [114.305, 30.593]  // 武汉中心坐标
+            center: [114.305, 30.593]
         });
 
-        // 存储所有数据点和当前显示的标记
+        // 全局变量
         var allDataPoints = [];
         var currentMarkers = [];
-        var regions = [];
 
-        // 加载可视化项目
-        var visual = new AMap.Visual('amap://visual/bf9105f25aa5bf2578aa2de84cc4a687', map);
-
-        console.log('可视化项目加载中，中心点：武汉');
-
-        // 监听加载事件
-        visual.on('complete', function () {
-            console.log('✅ 可视化项目加载完成');
-            // 从MVT数据源加载真实数据
-            loadMVTData();
-        });
-
-        visual.on('error', function (error) {
-            console.log('❌ 可视化项目加载失败:', error);
-        });
-
-        // 从MVT数据源加载数据
-        function loadMVTData() {
-            // 这里需要调用高德数据发布服务的API来获取MVT数据属性
-            // 由于直接访问MVT属性数据需要特定API，这里先使用模拟数据演示
-            // 实际使用时需要替换为真实的高德数据发布服务API调用
+        // 页面加载完成后加载数据
+        window.onload = async function() {
+            await loadBackupMockData(); 
+            initSearchFilterControls();
+            document.getElementById('loadingTip').style.display = 'none';
             
-            console.log('正在从MVT数据源加载数据...');
-            console.log('数据源ID: b203c9b8-1bac-4552-8c34-4f7a10c85a17');
-            
-            // 模拟从MVT加载的真实数据结构
-            simulateMVTDataLoad();
+            // 预加载图片（关键优化：提前加载图片到缓存）
+            preloadImages([
+                'https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/ff67be6eca864b2ca2d6ffb28ac6d54d.png~tplv-a9rns2rl98-image.png?rcl=202512161102294A53C7FE90AFCADC1108&rk3s=8e244e95&rrcfp=dafada99&x-expires=2082078150&x-signature=188tzcrtTDaIkY1ME2hI4dqYk8U%3D',
+                'https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/40c76c2121c64120958d20d9c11059eb.png~tplv-a9rns2rl98-image.png?rcl=202512161102294A53C7FE90AFCADC1108&rk3s=8e244e95&rrcfp=dafada99&x-expires=2082078150&x-signature=LV0T3azWCNOUtVYOJv8EzWtQvmo%3D'
+            ]);
+        };
+
+        // 预加载图片（核心优化）
+        function preloadImages(imageUrls) {
+            imageUrls.forEach(url => {
+                const img = new Image();
+                img.src = url;
+                // 加载完成后存入缓存，后续打开弹窗直接读取
+                img.onload = function() {
+                    console.log('图片预加载完成：', url);
+                };
+                img.onerror = function() {
+                    console.warn('图片预加载失败：', url);
+                };
+            });
         }
 
-        // 模拟MVT数据加载（实际使用时替换为真实API调用）
-        function simulateMVTDataLoad() {
-            // 模拟武汉的主要区域
-            var wuhanRegions = ['江岸区', '江汉区', '硚口区', '汉阳区', '武昌区', '青山区', '洪山区', '东西湖区', '汉南区', '蔡甸区', '江夏区', '黄陂区', '新洲区'];
+        // 隐藏图片加载提示
+        function hideLoading(loadingId) {
+            document.getElementById(loadingId).style.display = 'none';
+        }
+
+        // 加载模拟数据
+        function loadBackupMockData() {
+            var wuhanRegions = ['江岸区', '江汉区', '硚口区', '汉阳区', '武昌区', '青山区', '洪山区'];
+            var communityNames = [
+                '东湖天下', '保利心语', '百步亭花园', '万科金色城市', '华润置地橡树湾',
+                '金地自在城', '福星惠誉国际城', '绿地国际金融城', '融创望江府', '中建大公馆'
+            ];
             var layouts = ['2室1厅', '3室1厅', '3室2厅', '4室2厅', '2室2厅'];
             
-            // 生成159个模拟数据点，基于您提供的字段结构
             for (var i = 0; i < 159; i++) {
                 var region = wuhanRegions[Math.floor(Math.random() * wuhanRegions.length)];
-                var unitPrice = Math.floor(Math.random() * 15000) + 5000; // 5000-20000元/㎡
-                var area = Math.floor(Math.random() * 150) + 50; // 50-200㎡
-                var totalPrice = (unitPrice * area / 10000).toFixed(2); // 总价（万元）
-                var layout = layouts[Math.floor(Math.random() * layouts.length)];
-                
-                // 在武汉范围内随机生成坐标
-                var lng = 114.2 + Math.random() * 0.3; // 114.2-114.5
-                var lat = 30.5 + Math.random() * 0.2;  // 30.5-30.7
+                var community = communityNames[i % communityNames.length] + (i < 10 ? '' : i);
+                var unitPrice = Math.floor(Math.random() * 15000) + 5000;
+                var area = Math.floor(Math.random() * 150) + 50;
+                var totalPrice = (unitPrice * area / 10000).toFixed(2);
                 
                 allDataPoints.push({
                     id: i + 1,
-                    小区: '小区' + (i + 1),
+                    小区: community,
                     区域: region,
-                    房型: layout,
+                    房型: layouts[Math.floor(Math.random() * layouts.length)],
                     面积: area,
                     单价: unitPrice,
                     总价: parseFloat(totalPrice),
-                    lnglat: [lng, lat],
+                    lnglat: [114.2 + Math.random() * 0.3, 30.5 + Math.random() * 0.2],
                     color: unitPrice > 10000 ? '#ff0000' : '#0066cc'
                 });
             }
             
-            // 初始化筛选控件
-            initFilterControls();
-            // 显示所有点
             showDataPoints(allDataPoints);
             updateResultCount(allDataPoints.length);
-            
-            console.log('✅ MVT数据加载完成，共', allDataPoints.length, '个数据点');
         }
 
-        // 显示数据点在地图上
+        // 显示数据点
         function showDataPoints(points) {
-            // 清除现有标记
             clearMarkers();
-            
-            // 添加新标记
             points.forEach(function(point) {
+                if (!point.lnglat || point.lnglat.length !== 2) return;
+                
+                var markerContent = `<div style="
+                    width: 10px;          
+                    height: 10px;         
+                    background-color: ${point.color};
+                    border-radius: 50%;   
+                    border: 1px solid #fff; 
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.2); 
+                    cursor: pointer;
+                    transition: transform 0.2s ease; 
+                " 
+                onmouseover="this.style.transform='scale(1.5)'"  
+                onmouseout="this.style.transform='scale(1)'"
+                title="${point.小区} - ${point.区域} - ${point.单价}元/㎡"></div>`;
+                
                 var marker = new AMap.Marker({
                     position: point.lnglat,
-                    title: point.小区 + ' - ' + point.单价 + '元/㎡',
-                    content: createMarkerContent(point),
-                    offset: new AMap.Pixel(-8, -8)
+                    title: `${point.小区}（${point.区域}）- ${point.单价}元/㎡`,
+                    content: markerContent,
+                    offset: new AMap.Pixel(-5, -5)
                 });
                 
-                // 添加点击事件显示属性信息
                 marker.on('click', function() {
                     showPropertyInfo(point);
                 });
@@ -377,18 +564,9 @@
             });
         }
 
-        // 创建标记内容
-        function createMarkerContent(point) {
-            return '<div style="width:16px;height:16px;background-color:' + point.color + 
-                   ';border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;" title="' + 
-                   point.小区 + ' - ' + point.单价 + '元/㎡"></div>';
-        }
-
-        // 清除所有标记
+        // 清除标记
         function clearMarkers() {
-            currentMarkers.forEach(function(marker) {
-                marker.setMap(null);
-            });
+            currentMarkers.forEach(marker => marker.setMap(null));
             currentMarkers = [];
         }
 
@@ -404,101 +582,100 @@
         }
 
         // 初始化筛选控件
-        function initFilterControls() {
-            // 获取所有区域并去重
-            regions = [...new Set(allDataPoints.map(point => point.区域))];
-            
-            // 填充区域选择框
-            var regionSelect = document.getElementById('regionSelect');
-            regions.forEach(function(region) {
-                var option = document.createElement('option');
-                option.value = region;
-                option.textContent = region;
-                regionSelect.appendChild(option);
+        function initSearchFilterControls() {
+            document.getElementById('doSearchFilter').addEventListener('click', executeSearchAndFilter);
+            document.getElementById('resetAll').addEventListener('click', resetAllConditions);
+            document.getElementById('keywordSearch').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') executeSearchAndFilter();
             });
-            
-            // 绑定筛选按钮事件
-            document.getElementById('applyFilter').addEventListener('click', applyFilters);
-            document.getElementById('resetFilter').addEventListener('click', resetFilters);
         }
 
-        // 应用筛选条件
-        function applyFilters() {
-            var selectedRegions = getSelectedRegions();
+        // 执行筛选
+        function executeSearchAndFilter() {
+            if (allDataPoints.length === 0) {
+                alert('暂无数据可筛选！');
+                return;
+            }
+
+            var keyword = document.getElementById('keywordSearch').value.trim().toLowerCase();
             var minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
             var maxPrice = parseFloat(document.getElementById('maxPrice').value) || Infinity;
             var minTotalPrice = parseFloat(document.getElementById('minTotalPrice').value) || 0;
             var maxTotalPrice = parseFloat(document.getElementById('maxTotalPrice').value) || Infinity;
             var minArea = parseFloat(document.getElementById('minArea').value) || 0;
             var maxArea = parseFloat(document.getElementById('maxArea').value) || Infinity;
-            
-            // 筛选数据
-            var filteredPoints = allDataPoints.filter(function(point) {
-                // 区域筛选
-                var regionMatch = selectedRegions.length === 0 || selectedRegions.includes(point.区域);
-                
-                // 单价筛选
+
+            var filteredPoints = allDataPoints.filter(point => {
+                var keywordMatch = keyword === '' 
+                    ? true 
+                    : point.小区.toLowerCase().includes(keyword) || point.区域.toLowerCase().includes(keyword);
                 var priceMatch = point.单价 >= minPrice && point.单价 <= maxPrice;
-                
-                // 总价筛选
                 var totalPriceMatch = point.总价 >= minTotalPrice && point.总价 <= maxTotalPrice;
-                
-                // 面积筛选
                 var areaMatch = point.面积 >= minArea && point.面积 <= maxArea;
-                
-                return regionMatch && priceMatch && totalPriceMatch && areaMatch;
+                return keywordMatch && priceMatch && totalPriceMatch && areaMatch;
             });
-            
-            // 显示筛选结果
+
             showDataPoints(filteredPoints);
             updateResultCount(filteredPoints.length);
+            if (filteredPoints.length === 0) alert('未找到符合条件的数据！');
         }
 
-        // 获取选中的区域
-        function getSelectedRegions() {
-            var regionSelect = document.getElementById('regionSelect');
-            var selectedRegions = [];
-            for (var i = 0; i < regionSelect.options.length; i++) {
-                if (regionSelect.options[i].selected) {
-                    selectedRegions.push(regionSelect.options[i].value);
-                }
-            }
-            return selectedRegions;
-        }
-
-        // 重置筛选条件
-        function resetFilters() {
-            document.getElementById('regionSelect').selectedIndex = -1;
+        // 重置筛选
+        function resetAllConditions() {
+            document.getElementById('keywordSearch').value = '';
             document.getElementById('minPrice').value = '';
             document.getElementById('maxPrice').value = '';
             document.getElementById('minTotalPrice').value = '';
             document.getElementById('maxTotalPrice').value = '';
             document.getElementById('minArea').value = '';
             document.getElementById('maxArea').value = '';
-            
-            // 显示所有点
             showDataPoints(allDataPoints);
             updateResultCount(allDataPoints.length);
         }
 
         // 更新结果计数
         function updateResultCount(count) {
-            document.getElementById('resultCount').textContent = '共 ' + count + ' 个数据点';
+            document.getElementById('resultCount').textContent = 
+                count === 0 ? '暂无数据' : 
+                count === allDataPoints.length ? `共 ${count} 个数据点` : 
+                `筛选结果：${count} 个数据点`;
         }
 
-        // 实际的高德数据发布服务API调用函数（需要根据实际API文档实现）
-        async function fetchMVTDataFromAPI() {
-            try {
-                // 这里需要根据高德数据发布服务的实际API进行调用
-                // const response = await fetch(`https://yuntuapi.amap.com/datasearch/vector?key=您的key&tableid=b203c9b8-1bac-4552-8c34-4f7a10c85a17&keywords=&city=武汉&limit=159`);
-                // const data = await response.json();
-                // return data.datas; // 根据实际API响应结构调整
-                
-                console.log('需要实现真实的高德数据发布服务API调用');
-                return [];
-            } catch (error) {
-                console.error('API调用失败:', error);
-                return [];
+        // 弹窗相关功能
+        function openPopup(type) {
+            // 隐藏所有弹窗
+            document.querySelectorAll('.popup-panel').forEach(panel => panel.style.display = 'none');
+            // 显示对应弹窗
+            if (type === 'heatmap') {
+                document.getElementById('heatmapPopup').style.display = 'block';
+                // 重置加载提示
+                document.getElementById('heatmapLoading').style.display = 'block';
+            }
+            if (type === 'areaPrice') {
+                document.getElementById('areaPricePopup').style.display = 'block';
+                // 重置加载提示
+                document.getElementById('areaPriceLoading').style.display = 'block';
+            }
+            if (type === 'suggest') document.getElementById('suggestPopup').style.display = 'block';
+        }
+
+        function closePopup(type) {
+            if (type === 'heatmap') document.getElementById('heatmapPopup').style.display = 'none';
+            if (type === 'areaPrice') document.getElementById('areaPricePopup').style.display = 'none';
+            if (type === 'suggest') document.getElementById('suggestPopup').style.display = 'none';
+            // 关闭时隐藏分析内容
+            document.getElementById('heatmapSuggest').style.display = 'none';
+            document.getElementById('areaPriceSuggest').style.display = 'none';
+        }
+
+        function toggleSuggest(type) {
+            if (type === 'heatmap') {
+                var elem = document.getElementById('heatmapSuggest');
+                elem.style.display = elem.style.display === 'none' ? 'block' : 'none';
+            }
+            if (type === 'areaPrice') {
+                var elem = document.getElementById('areaPriceSuggest');
+                elem.style.display = elem.style.display === 'none' ? 'block' : 'none';
             }
         }
     </script>
