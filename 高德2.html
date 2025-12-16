@@ -145,6 +145,33 @@
             color: #666;
         }
 
+        /* 学校图例 */
+        #schoolLegend {
+            position: absolute;
+            bottom: 20px;
+            left: 240px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 180px;
+        }
+        .school-legend-box {
+            width: 12px;
+            height: 12px;
+            margin-right: 10px;
+            background-color: rgba(100, 149, 237, 0.2);
+            border: 1px solid #6495ed;
+        }
+        .school-legend-icon {
+            width: 12px;
+            height: 12px;
+            margin-right: 10px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236495ed'%3E%3Cpath d='M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z'/%3E%3C/svg%3E");
+            background-size: contain;
+        }
+
         /* 弹窗面板（优化加载） */
         .popup-panel {
             position: absolute;
@@ -436,7 +463,7 @@
         <div class="login-status" id="loginStatus">未登录</div>
     </div>
 
-    <!-- 图例 -->
+    <!-- 原有图例 -->
     <div id="legend">
         <div class="legend-title">单价图例</div>
         <div class="legend-item">
@@ -446,6 +473,19 @@
         <div class="legend-item">
             <div class="legend-color" style="background-color: #0066cc;"></div>
             <div class="legend-label">单价 ≤ 10000元/㎡</div>
+        </div>
+    </div>
+
+    <!-- 新增：学校图例 -->
+    <div id="schoolLegend">
+        <div class="legend-title">学校标注</div>
+        <div class="legend-item">
+            <div class="school-legend-icon"></div>
+            <div class="legend-label">学校位置</div>
+        </div>
+        <div class="legend-item">
+            <div class="school-legend-box"></div>
+            <div class="legend-label">学校辐射区域</div>
         </div>
     </div>
     
@@ -644,11 +684,69 @@
         var currentSelectedPoint = null; // 当前选中的点位
         var isAdmin = false; // 是否管理员登录
         var commentData = {}; // 存储评价数据 {点位ID: [{score: 5, content: '评价内容', time: '时间戳', id: '评论ID'}]}
+        var schoolMarkers = []; // 学校标记数组
+        var schoolPolygons = []; // 学校区域多边形数组
+
+        // 武汉主要学校数据（包含坐标和辐射范围）
+        var wuhanSchools = [
+            {
+                name: "武汉大学（文理学部）",
+                lnglat: [114.3517, 30.5422],
+                radius: 0.008 // 辐射半径（经纬度）
+            },
+            {
+                name: "华中科技大学（主校区）",
+                lnglat: [114.4002, 30.5087],
+                radius: 0.010
+            },
+            {
+                name: "华中师范大学",
+                lnglat: [114.3589, 30.5236],
+                radius: 0.007
+            },
+            {
+                name: "武汉理工大学（马房山校区）",
+                lnglat: [114.3678, 30.5058],
+                radius: 0.008
+            },
+            {
+                name: "中南财经政法大学（南湖校区）",
+                lnglat: [114.3876, 30.4759],
+                radius: 0.009
+            },
+            {
+                name: "水果湖第一小学",
+                lnglat: [114.3278, 30.5789],
+                radius: 0.005
+            },
+            {
+                name: "武汉外国语学校",
+                lnglat: [114.2056, 30.5678],
+                radius: 0.006
+            },
+            {
+                name: "华中师大一附中",
+                lnglat: [114.4567, 30.4892],
+                radius: 0.007
+            },
+            {
+                name: "武汉二中",
+                lnglat: [114.3215, 30.6087],
+                radius: 0.005
+            },
+            {
+                name: "武汉六中",
+                lnglat: [114.3128, 30.6015],
+                radius: 0.005
+            }
+        ];
 
         // 页面加载完成后加载数据
         window.onload = async function() {
             await loadBackupMockData(); 
             initSearchFilterControls();
+            // 添加学校标注和辐射区域
+            addSchoolMarkers();
             document.getElementById('loadingTip').style.display = 'none';
             
             // 预加载图片（关键优化：提前加载图片到缓存）
@@ -657,6 +755,88 @@
                 'https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/40c76c2121c64120958d20d9c11059eb.png~tplv-a9rns2rl98-image.png?rcl=202512161102294A53C7FE90AFCADC1108&rk3s=8e244e95&rrcfp=dafada99&x-expires=2082078150&x-signature=LV0T3azWCNOUtVYOJv8EzWtQvmo%3D'
             ]);
         };
+
+        // 添加学校标注和辐射区域
+        function addSchoolMarkers() {
+            // 清除现有学校标记
+            clearSchoolMarkers();
+            
+            wuhanSchools.forEach(function(school) {
+                // 创建学校标记
+                var schoolIcon = `<div style="
+                    width: 16px;
+                    height: 16px;
+                    background-color: #6495ed;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 8px;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                ">🏫</div>`;
+                
+                var marker = new AMap.Marker({
+                    position: school.lnglat,
+                    title: school.name,
+                    content: schoolIcon,
+                    offset: new AMap.Pixel(-8, -8),
+                    zIndex: 100 // 确保学校标记在房源标记之上
+                });
+                
+                marker.on('click', function() {
+                    // 点击学校标记显示信息
+                    var infoWindow = new AMap.InfoWindow({
+                        content: `<div style="padding: 10px;"><strong>${school.name}</strong></div>`,
+                        offset: new AMap.Pixel(0, -20)
+                    });
+                    infoWindow.open(map, school.lnglat);
+                });
+                
+                marker.setMap(map);
+                schoolMarkers.push(marker);
+                
+                // 创建学校辐射区域（淡蓝色透明多边形）
+                var polygonPoints = getCirclePoints(school.lnglat, school.radius, 32);
+                var polygon = new AMap.Polygon({
+                    path: polygonPoints,
+                    fillColor: '#6495ed', // 淡蓝色
+                    fillOpacity: 0.1, // 透明度10%，不影响观感
+                    strokeColor: '#6495ed',
+                    strokeOpacity: 0.3,
+                    strokeWeight: 1,
+                    zIndex: 50 // 确保区域在房源标记之下
+                });
+                
+                polygon.setMap(map);
+                schoolPolygons.push(polygon);
+            });
+        }
+
+        // 生成圆形多边形的顶点
+        function getCirclePoints(center, radius, numPoints) {
+            var points = [];
+            var lng = center[0];
+            var lat = center[1];
+            
+            for (var i = 0; i < numPoints; i++) {
+                var angle = (i / numPoints) * Math.PI * 2;
+                var newLng = lng + radius * Math.cos(angle);
+                var newLat = lat + radius * Math.sin(angle);
+                points.push([newLng, newLat]);
+            }
+            
+            return points;
+        }
+
+        // 清除学校标记
+        function clearSchoolMarkers() {
+            schoolMarkers.forEach(marker => marker.setMap(null));
+            schoolPolygons.forEach(polygon => polygon.setMap(null));
+            schoolMarkers = [];
+            schoolPolygons = [];
+        }
 
         // 预加载图片（核心优化）
         function preloadImages(imageUrls) {
@@ -728,6 +908,7 @@
                     box-shadow: 0 1px 2px rgba(0,0,0,0.2); 
                     cursor: pointer;
                     transition: transform 0.2s ease; 
+                    z-index: 70;
                 " 
                 onmouseover="this.style.transform='scale(1.5)'"  
                 onmouseout="this.style.transform='scale(1)'"
@@ -737,7 +918,8 @@
                     position: point.lnglat,
                     title: `${point.小区}（${point.区域}）- ${point.单价}元/㎡`,
                     content: markerContent,
-                    offset: new AMap.Pixel(-5, -5)
+                    offset: new AMap.Pixel(-5, -5),
+                    zIndex: 70 // 房源标记层级
                 });
                 
                 marker.on('click', function() {
