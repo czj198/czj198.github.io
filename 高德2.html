@@ -265,6 +265,154 @@
             border-radius: 8px;
             z-index: 2000;
         }
+
+        /* 新增：管理员登录面板 */
+        #adminLoginPanel {
+            position: absolute;
+            top: 20px;
+            left: 240px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 200px;
+        }
+        .login-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            font-size: 14px;
+        }
+        .login-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 6px;
+            background: #1e5799;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .login-status {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 8px;
+        }
+        .login-success {
+            color: #28a745;
+        }
+        .login-error {
+            color: #dc3545;
+        }
+
+        /* 新增：评价面板 */
+        #commentPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 1003;
+            width: 350px;
+            display: none;
+        }
+        .comment-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .comment-input {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: none;
+            margin-bottom: 10px;
+        }
+        .comment-score {
+            margin-bottom: 10px;
+        }
+        .score-label {
+            font-size: 14px;
+            color: #666;
+            margin-right: 10px;
+        }
+        .score-star {
+            color: #ffc107;
+            cursor: pointer;
+        }
+        .comment-submit {
+            width: 100%;
+            padding: 8px;
+            background: #1e5799;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .comment-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .comment-item {
+            padding: 8px 0;
+            border-bottom: 1px dashed #f0f0f0;
+        }
+        .comment-score-display {
+            color: #ffc107;
+            margin-bottom: 4px;
+        }
+        .comment-content {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .comment-time {
+            font-size: 12px;
+            color: #999;
+        }
+        .comment-delete {
+            font-size: 12px;
+            color: #dc3545;
+            cursor: pointer;
+            margin-left: 10px;
+            display: none; /* 默认隐藏删除按钮，管理员登录后显示 */
+        }
+        .admin-show .comment-delete {
+            display: inline;
+        }
+        .comment-empty {
+            font-size: 14px;
+            color: #999;
+            text-align: center;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -277,6 +425,15 @@
         <div class="function-item" onclick="openPopup('heatmap')">1. 房价热力图</div>
         <div class="function-item" onclick="openPopup('areaPrice')">2. 单价面积关系图</div>
         <div class="function-item" onclick="openPopup('suggest')">3. 购买建议</div>
+    </div>
+
+    <!-- 新增：管理员登录面板 -->
+    <div id="adminLoginPanel">
+        <div class="login-title">管理员登录</div>
+        <input type="text" id="adminAccount" class="login-input" placeholder="账号" value="">
+        <input type="password" id="adminPwd" class="login-input" placeholder="密码" value="">
+        <button class="login-btn" onclick="adminLogin()">登录</button>
+        <div class="login-status" id="loginStatus">未登录</div>
     </div>
 
     <!-- 图例 -->
@@ -438,7 +595,30 @@
         <div class="property-item">
             <span class="property-key">总价:</span> <span id="propTotalPrice"></span> 万元
         </div>
-        <button class="action-button" onclick="document.getElementById('propertyPanel').style.display='none'">关闭</button>
+        <button class="action-button" style="margin-top:10px" onclick="openCommentPanel(currentSelectedPoint)">添加评价</button>
+        <button class="action-button reset" onclick="document.getElementById('propertyPanel').style.display='none'">关闭</button>
+    </div>
+
+    <!-- 新增：评价面板 -->
+    <div id="commentPanel">
+        <div class="comment-title" id="commentPanelTitle">评价 - <span id="commentCommunityName"></span></div>
+        <div class="comment-score">
+            <span class="score-label">评分：</span>
+            <span class="score-star" onclick="setScore(1)">★</span>
+            <span class="score-star" onclick="setScore(2)">★</span>
+            <span class="score-star" onclick="setScore(3)">★</span>
+            <span class="score-star" onclick="setScore(4)">★</span>
+            <span class="score-star" onclick="setScore(5)">★</span>
+            <input type="hidden" id="currentScore" value="0">
+        </div>
+        <textarea class="comment-input" id="commentContent" placeholder="请输入评价内容..."></textarea>
+        <button class="comment-submit" onclick="submitComment()">提交评价</button>
+        <div class="comment-list" id="commentList">
+            <div class="comment-empty">暂无评价</div>
+        </div>
+        <div class="popup-buttons" style="margin-top:15px">
+            <button class="popup-btn-close" onclick="closeCommentPanel()">关闭</button>
+        </div>
     </div>
 
     <!-- 高德安全配置 -->
@@ -461,6 +641,9 @@
         // 全局变量
         var allDataPoints = [];
         var currentMarkers = [];
+        var currentSelectedPoint = null; // 当前选中的点位
+        var isAdmin = false; // 是否管理员登录
+        var commentData = {}; // 存储评价数据 {点位ID: [{score: 5, content: '评价内容', time: '时间戳', id: '评论ID'}]}
 
         // 页面加载完成后加载数据
         window.onload = async function() {
@@ -522,6 +705,8 @@
                     lnglat: [114.2 + Math.random() * 0.3, 30.5 + Math.random() * 0.2],
                     color: unitPrice > 10000 ? '#ff0000' : '#0066cc'
                 });
+                // 初始化评价数据
+                commentData[i + 1] = [];
             }
             
             showDataPoints(allDataPoints);
@@ -557,6 +742,7 @@
                 
                 marker.on('click', function() {
                     showPropertyInfo(point);
+                    currentSelectedPoint = point; // 记录当前选中的点位
                 });
                 
                 marker.setMap(map);
@@ -676,6 +862,161 @@
             if (type === 'areaPrice') {
                 var elem = document.getElementById('areaPriceSuggest');
                 elem.style.display = elem.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        // ==================== 新增：管理员登录功能 ====================
+        function adminLogin() {
+            const account = document.getElementById('adminAccount').value.trim();
+            const pwd = document.getElementById('adminPwd').value.trim();
+            const statusEl = document.getElementById('loginStatus');
+
+            if (account === '123456' && pwd === '13456') {
+                isAdmin = true;
+                statusEl.className = 'login-status login-success';
+                statusEl.textContent = '已登录（管理员）';
+                document.getElementById('commentList').classList.add('admin-show');
+                alert('管理员登录成功，已解锁评论删除功能！');
+            } else {
+                isAdmin = false;
+                statusEl.className = 'login-status login-error';
+                statusEl.textContent = '账号或密码错误';
+                document.getElementById('commentList').classList.remove('admin-show');
+            }
+        }
+
+        // ==================== 新增：评价功能 ====================
+        // 打开评价面板
+        function openCommentPanel(point) {
+            if (!point) {
+                alert('请先选择一个房源点位！');
+                return;
+            }
+            currentSelectedPoint = point;
+            document.getElementById('commentCommunityName').textContent = point.小区;
+            document.getElementById('commentPanel').style.display = 'block';
+            // 重置评分和输入框
+            resetScore();
+            document.getElementById('commentContent').value = '';
+            // 加载该点位的评价
+            loadComments(point.id);
+            // 管理员登录状态更新
+            if (isAdmin) {
+                document.getElementById('commentList').classList.add('admin-show');
+            } else {
+                document.getElementById('commentList').classList.remove('admin-show');
+            }
+        }
+
+        // 关闭评价面板
+        function closeCommentPanel() {
+            document.getElementById('commentPanel').style.display = 'none';
+        }
+
+        // 设置评分
+        function setScore(score) {
+            document.getElementById('currentScore').value = score;
+            const stars = document.querySelectorAll('.score-star');
+            stars.forEach((star, index) => {
+                star.style.color = index < score ? '#ffc107' : '#ccc';
+            });
+        }
+
+        // 重置评分
+        function resetScore() {
+            document.getElementById('currentScore').value = 0;
+            const stars = document.querySelectorAll('.score-star');
+            stars.forEach(star => {
+                star.style.color = '#ccc';
+            });
+        }
+
+        // 提交评价
+        function submitComment() {
+            if (!currentSelectedPoint) {
+                alert('请先选择一个房源点位！');
+                return;
+            }
+            const score = parseInt(document.getElementById('currentScore').value);
+            const content = document.getElementById('commentContent').value.trim();
+            
+            if (score === 0) {
+                alert('请选择评分！');
+                return;
+            }
+            if (!content) {
+                alert('请输入评价内容！');
+                return;
+            }
+
+            // 生成评论ID
+            const commentId = 'cmt_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            // 构造评论数据
+            const comment = {
+                id: commentId,
+                score: score,
+                content: content,
+                time: new Date().toLocaleString()
+            };
+
+            // 保存评论
+            commentData[currentSelectedPoint.id].push(comment);
+            // 重新加载评论
+            loadComments(currentSelectedPoint.id);
+            // 重置表单
+            resetScore();
+            document.getElementById('commentContent').value = '';
+            alert('评价提交成功！');
+        }
+
+        // 加载评论
+        function loadComments(pointId) {
+            const commentListEl = document.getElementById('commentList');
+            const comments = commentData[pointId] || [];
+
+            if (comments.length === 0) {
+                commentListEl.innerHTML = '<div class="comment-empty">暂无评价</div>';
+                return;
+            }
+
+            let html = '';
+            comments.forEach(comment => {
+                // 生成星级显示
+                let starsHtml = '';
+                for (let i = 1; i <= 5; i++) {
+                    starsHtml += `<span style="color: ${i <= comment.score ? '#ffc107' : '#ccc'}">★</span>`;
+                }
+
+                html += `
+                    <div class="comment-item" data-comment-id="${comment.id}">
+                        <div class="comment-score-display">${starsHtml}</div>
+                        <div class="comment-content">
+                            ${comment.content}
+                            <span class="comment-delete" onclick="deleteComment(${pointId}, '${comment.id}')">删除</span>
+                        </div>
+                        <div class="comment-time">${comment.time}</div>
+                    </div>
+                `;
+            });
+
+            commentListEl.innerHTML = html;
+            // 管理员状态更新
+            if (isAdmin) {
+                commentListEl.classList.add('admin-show');
+            }
+        }
+
+        // 删除评论（管理员功能）
+        function deleteComment(pointId, commentId) {
+            if (!isAdmin) {
+                alert('只有管理员可以删除评论！');
+                return;
+            }
+            if (confirm('确定要删除这条评论吗？')) {
+                // 过滤掉要删除的评论
+                commentData[pointId] = commentData[pointId].filter(comment => comment.id !== commentId);
+                // 重新加载评论
+                loadComments(pointId);
             }
         }
     </script>
